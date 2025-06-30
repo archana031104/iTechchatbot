@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iTech AI Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Ensuring Inter font for overall aesthetics (Google Fonts not loaded, fallback to generic) */
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .chat-container {
+            height: calc(100vh - 200px); /* Adjust height to fit screen */
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            border: 1px solid #e9e9e9; /* Added border for chat box */
+            padding: 15px;
+            background-color: #fcfcfc;
+            border-radius: 8px;
+            gap: 10px; /* Space between messages */
+        }
+
+        .message-text {
+            white-space: pre-line; /* Preserves newlines from Flask response */
+            padding: 5px 0; /* Add some vertical padding */
+        }
+
+        /* Custom styles for rounded corners and shadows, reinforcing Tailwind but ensuring consistency */
+        .rounded-lg {
+            border-radius: 0.5rem;
+        }
+
+        .shadow-lg {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Adjustments for button hover/active effects */
+        .bg-blue-600 {
+            background-color: #2563eb;
+        }
+
+        .hover\:bg-blue-700:hover {
+            background-color: #1d4ed8;
+        }
+
+        .focus\:ring-blue-500:focus {
+            --tw-ring-color: #3b82f6;
+        }
+
+        /* Specific message bubble styling for better visual separation */
+        .user-message-bubble {
+            background-color: #2563eb; /* Blue for user messages */
+            color: white;
+            border-radius: 0.5rem;
+            border-bottom-right-radius: 0.125rem; /* Slight asymmetry */
+            padding: 0.75rem;
+            max-width: 80%;
+            word-wrap: break-word;
+            align-self: flex-end; /* Align to the right */
+        }
+
+        .bot-message-bubble {
+            background-color: #e0f2fe; /* Light blue for bot messages */
+            color: #1a202c; /* Darker text for readability */
+            border-radius: 0.5rem;
+            border-bottom-left-radius: 0.125rem; /* Slight asymmetry */
+            padding: 0.75rem;
+            max-width: 80%;
+            word-wrap: break-word;
+            align-self: flex-start; /* Align to the left */
+        }
+
+        /* Input and button styling */
+        .input-field {
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db; /* Correct and complete border definition */
+            border-radius: 9999px; /* Fully rounded pill shape */
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .input-field:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        .send-button {
+            padding: 0.75rem 1.5rem;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 9999px; /* Fully rounded pill shape */
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            white-space: nowrap; /* Prevent button text from wrapping */
+        }
+
+        .send-button:hover {
+            background-color: #1d4ed8;
+            transform: translateY(-1px);
+        }
+
+        .send-button:active {
+            transform: translateY(0);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            .max-w-4xl {
+                max-width: 100%;
+            }
+
+            .chat-container {
+                height: calc(100vh - 180px); /* Adjust height for smaller screens */
+            }
+
+            .flex-gap-2 { /* For form, change to column layout on small screens */
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .input-field, .send-button {
+                width: 100%;
+                box-sizing: border-box;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-3xl font-bold text-center mb-8 text-blue-600">iTech AI Assistant</h1>
+
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div class="chat-container mb-6" id="chatContainer">
+                    <div class="space-y-4" id="chatMessages">
+                        <div class="flex items-start">
+                            <div class="bot-message-bubble">
+                                <p class="message-text">
+                                    Hello! I'm your iTech AI Assistant. I can tell you about our services, expertise, and
+                                    solutions. What would you like to know?
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <form id="searchForm" class="flex gap-2 flex-gap-2">
+                    <input type="text" id="query" name="query"
+                        class="input-field"
+                        placeholder="Ask about our services, expertise, or solutions...">
+                    <button type="submit" class="send-button">
+                        Ask
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Version indicator for debugging browser caching issues
+        console.log("Chatbot Frontend Version: 1.6"); 
+
+        const searchForm = document.getElementById('searchForm');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatContainer = document.getElementById('chatContainer');
+
+        /**
+         * Appends a message to the chat display.
+         * @param {string} content The text content of the message.
+         * @param {boolean} isUser True if the message is from the user, false for bot.
+         * @returns {HTMLElement} The outer message div element.
+         */
+        function appendMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex items-start ' + (isUser ? 'justify-end' : '');
+
+            const messageBubble = document.createElement('div');
+            messageBubble.className = isUser ? 'user-message-bubble' : 'bot-message-bubble';
+
+            if (!isUser) {
+                // Regex now specifically looks for content that might start with "Answer: " or just content
+                // and correctly extracts the source URL if present.
+                const responseRegex = /(?:Answer:\s*)?(.*?)(?:\s*\(Source: (.*)\))?$/s;
+                const match = content.match(responseRegex);
+
+                let mainContent = content;
+                let sourceUrl = null;
+
+                if (match) {
+                    mainContent = match[1] ? match[1].trim() : '';
+                    sourceUrl = match[2] ? match[2].trim() : null;
+                }
+
+                const answerP = document.createElement('p');
+                answerP.classList.add('message-text');
+                
+                // Check if the content looks like a list (e.g., starts with -, *, or 1.)
+                // This is a heuristic and might need fine-tuning based on actual data
+                if (mainContent.match(/^(-|\*|\d+\.)\s/m) || mainContent.includes('\n- ')) {
+                    const listItems = mainContent.split('\n').filter(item => item.trim() !== '');
+                    const ul = document.createElement('ul');
+                    ul.classList.add('list-disc', 'list-inside', 'ml-4', 'mt-2', 'mb-2'); // Tailwind for bullet points, indent
+                    listItems.forEach(item => {
+                        // Remove leading list markers like '-', '*' or '1.' before displaying
+                        const cleanedItem = item.replace(/^(-|\*|\d+\.)\s*/, '').trim();
+                        if (cleanedItem) {
+                            const li = document.createElement('li');
+                            li.textContent = cleanedItem;
+                            ul.appendChild(li);
+                        }
+                    });
+                    messageBubble.appendChild(ul);
+                } else {
+                    answerP.innerHTML = mainContent.replace(/\n/g, '<br>');
+                    messageBubble.appendChild(answerP);
+                }
+
+                if (sourceUrl) {
+                    const sourceP = document.createElement('p');
+                    sourceP.innerHTML = `<a href="${sourceUrl}" target="_blank" class="text-blue-500 hover:underline font-semibold mt-2 inline-block">Read more</a>`;
+                    sourceP.classList.add('message-text', 'text-sm'); 
+                    messageBubble.appendChild(sourceP);
+                }
+
+            } else {
+                const p = document.createElement('p');
+                p.className = 'message-text';
+                p.textContent = content; 
+                messageBubble.appendChild(p);
+            }
+            
+            messageDiv.appendChild(messageBubble);
+            chatMessages.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // Return the entire messageDiv so it can be removed later
+            return messageDiv;
+        }
+
+        // Event listener for form submission
+        searchForm.addEventListener('submit', async (e) => {
+            e.preventDefault(); 
+            const queryInput = document.getElementById('query');
+            const query = queryInput.value.trim();
+
+            if (!query) return;
+
+            // Append user message
+            appendMessage(query, true); 
+            queryInput.value = ''; 
+
+            // Append "Thinking..." message and get its reference
+            const loadingMessageDiv = appendMessage("Thinking..."); 
+
+            try {
+                const requestBody = JSON.stringify({ query: query });
+                const fetchUrl = 'http://127.0.0.1:5000/search'; 
+
+                console.log('Fetching URL:', fetchUrl);
+                console.log('Sending request body:', requestBody);
+                console.log('Sending Content-Type:', 'application/json');
+
+                const response = await fetch(fetchUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'         
+                    },
+                    body: requestBody 
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('HTTP Error Response:', errorText);
+                    throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
+                }
+
+                const data = await response.json();
+                console.log('Received data:', data);
+
+                // Remove the "Thinking..." message div
+                loadingMessageDiv.remove();
+
+                if (data.response && data.response.length > 0) {
+                    appendMessage(data.response); 
+                } else {
+                    appendMessage("I'm not sure about that. Could you please ask about our specific services or expertise?");
+                }
+            } catch (error) {
+                console.error('Fetch error:', error);
+                // Ensure loading message is removed even on error
+                loadingMessageDiv.remove(); 
+                appendMessage(`I apologize, but I'm having trouble processing your request. Please try again. (Details: ${error.message})`);
+            }
+        });
+    </script>
+</body>
+
+</html>
