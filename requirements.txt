@@ -1,8 +1,0 @@
-Flask
-requests
-beautifulsoup4
-lxml
-selenium
-configparser
-torch
-sentence-transformers
