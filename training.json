@@ -466,10 +466,7 @@
         "text": "are you hiring?",
         "intent": "apply_job"
     },
-    
-   
-   
-    
+
     {
         "text": "bye",
         "intent": "goodbye"
