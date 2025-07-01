@@ -330,7 +330,10 @@
         "text": "More info about you",
         "intent": "about_us"
     },
-    
+    {
+        "text": "About us",
+        "intent": "about_us"
+    },
     {
         "text": "who are you?",
         "intent": "about_us"
