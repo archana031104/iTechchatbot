@@ -881,4 +881,4 @@ if __name__ == '__main__':
     load_intent_data() # Load intents and training data
     load_or_generate_embeddings() # Load/generate embeddings after content and intent data is ready
     
-    app.run()
+    app.run(debug=True)
